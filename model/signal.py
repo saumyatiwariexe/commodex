@@ -1,4 +1,4 @@
-﻿"""
+"""
 model/signal.py
 ===============
 Rolling z-score signal engine (MODEL.md §4).
@@ -32,6 +32,7 @@ Public API
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
@@ -78,15 +79,20 @@ def classify_liquidity(
     -------
     Series of :class:`LiquidityBucket` strings, same index as input.
     """
-    vol_q_thin   = volume.quantile(vol_thin_pct / 100)
-    vol_q_liquid = volume.quantile(vol_liquid_pct / 100)
-    oi_q_thin    = open_interest.quantile(oi_thin_pct / 100)
-    oi_q_liquid  = open_interest.quantile(oi_liquid_pct / 100)
+    # Use interpolation='lower' so that the quantile value is always an actual
+    # data point.  This means a row exactly at the quantile is NOT below it,
+    # so strict-less-than gives the correct "bottom N%" semantics.
+    vol_q_thin   = volume.quantile(vol_thin_pct / 100, interpolation="lower")
+    vol_q_liquid = volume.quantile(vol_liquid_pct / 100, interpolation="lower")
+    oi_q_thin    = open_interest.quantile(oi_thin_pct / 100, interpolation="lower")
+    oi_q_liquid  = open_interest.quantile(oi_liquid_pct / 100, interpolation="lower")
 
     def _bucket(v: float, oi: float) -> str:
-        if v <= vol_q_thin or oi <= oi_q_thin:
+        is_thin = v < vol_q_thin or oi < oi_q_thin
+        if is_thin:
             return LiquidityBucket.THIN
-        if v >= vol_q_liquid and oi >= oi_q_liquid:
+        is_liquid = v > vol_q_liquid and oi > oi_q_liquid
+        if is_liquid:
             return LiquidityBucket.LIQUID
         return LiquidityBucket.NORMAL
 
@@ -207,9 +213,12 @@ def _exit_reason(
     dte_b: int,
 ) -> Optional[str]:
     """Return an exit reason string, or None if the position should stay open."""
-    # calendar exit
+    # calendar exit — checked first, always safe
     if dte_a <= cfg.exit_days_before_expiry or dte_b <= cfg.exit_days_before_expiry:
         return "calendar"
+    # z is NaN (window incomplete or zero-std) — cannot assess; force exit
+    if math.isnan(z):
+        return "no_z"
     # mean-reversion exit
     if abs(z) < cfg.z_exit:
         return "mean_reversion"
