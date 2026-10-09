@@ -1,18 +1,22 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from typing import Optional
-import yaml
 from datetime import date
+import duckdb
+from ..deps import get_duckdb
 
 router = APIRouter(tags=["Data"])
 
 @router.get("/contracts")
-def get_contracts():
+def get_contracts(db: duckdb.DuckDBPyConnection = Depends(get_duckdb)):
     try:
-        with open("contracts_meta.yaml", "r") as f:
-            data = yaml.safe_load(f)
-        return {"data": data, "meta": {"generated_at": date.today().isoformat()}}
-    except FileNotFoundError:
-        return {"data": {}, "error": {"code": "NOT_FOUND", "message": "contracts_meta.yaml not found"}}
+        # Fetch from duckdb
+        res = db.execute("SELECT * FROM contract_meta").fetchall()
+        columns = [desc[0] for desc in db.description]
+        contracts = [dict(zip(columns, row)) for row in res]
+        
+        return {"data": {"contracts": contracts}, "meta": {"generated_at": date.today().isoformat()}}
+    except Exception as e:
+        return {"data": {}, "error": {"code": "DB_ERROR", "message": str(e)}}
 
 @router.get("/prices")
 def get_prices(symbol: str, expiry: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None):
