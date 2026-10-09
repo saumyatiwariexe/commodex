@@ -2,6 +2,13 @@
 
 Newest first. Every change to the idea, scope, or docs gets an entry (see AGENTS.md section 4).
 
+## 2026-10-09: v0.5 Project renamed to Commodex
+**Changed**
+- Renamed project from GoldSpread Intelligence to Commodex.
+- Removed all occurrences of "GoldSpread Intelligence" / "goldspread" across `README.md`, `docs/PRD.md`, and `docs/ARCHITECTURE.md`.
+
+**Why:** Project naming standardization as requested.
+
 ## 2026-10-09: v0.4 Hashing pinned
 **Changed**
 - `MODEL.md`: new section 12 (hashing and reproducibility). Defines what `snapshot_hash`, `config_hash` and `code_version` are, the canonical serialization rules (sorted keys, no whitespace, float and null handling, ISO dates, reject NaN and infinity), the `sha256:v1:` format, the snapshot-hash procedure, and what the hashes do not prove.

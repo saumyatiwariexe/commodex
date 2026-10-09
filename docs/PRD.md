@@ -1,4 +1,4 @@
-# PRD: GoldSpread Intelligence (Track 03, Hack in Hills '26)
+# PRD: Commodex (Track 03, Hack in Hills '26)
 
 > **Skills:** `engineering:documentation` (writing and updating docs), `engineering:architecture` (recording decisions). Rules: see AGENTS.md.
 
