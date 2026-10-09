@@ -8,9 +8,11 @@ import {
 } from 'lucide-react';
 import SpreadExplorer from './components/SpreadExplorer';
 import TermStructure from './components/TermStructure';
+import { useSignals } from './api';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'explorer' | 'term'>('overview');
+  const { data: signalsData, isLoading: signalsLoading } = useSignals('2026-10-09');
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden text-text-primary">
@@ -87,13 +89,31 @@ function App() {
               
               <div className="p-6 rounded-xl bg-surface border border-border">
                 <h3 className="text-sm font-medium text-text-secondary mb-2 uppercase tracking-wide">Today's Signal</h3>
-                <div className="flex items-end gap-4">
-                  <span className="text-4xl font-light text-text-secondary">No actionable signal today</span>
-                </div>
-                <div className="mt-4 flex items-center gap-2 text-sm text-accent-warning bg-accent-warning/10 px-3 py-2 rounded border border-accent-warning/20 inline-flex">
-                  <AlertCircle size={16} />
-                  <span>Candidate blocked: thin liquidity (Z-score 1.8 &lt; threshold 2.0)</span>
-                </div>
+                {signalsLoading ? (
+                  <div className="text-lg font-light text-text-secondary">Loading...</div>
+                ) : signalsData?.reason === "no_signal" || signalsData?.reason === "no_data" ? (
+                  <div className="flex items-end gap-4">
+                    <span className="text-4xl font-light text-text-secondary">No actionable signal today</span>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {signalsData?.signals?.map((s: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-4 bg-surface-hover rounded-lg border border-border">
+                        <div>
+                          <div className="font-mono text-lg text-white">
+                            {s.leg_a} / {s.leg_b}
+                          </div>
+                          <div className="text-sm text-text-secondary">
+                            Z-Score: <span className="text-white">{s.z_score.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <div className={`px-4 py-2 rounded font-bold ${s.signal_direction > 0 ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-warning/20 text-accent-warning'}`}>
+                          {s.signal_direction > 0 ? 'LONG SPREAD' : 'SHORT SPREAD'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-6">
