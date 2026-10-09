@@ -9,11 +9,10 @@ import {
   ResponsiveContainer,
   ReferenceArea
 } from 'recharts';
-import { useSpread } from '../api';
+import { MOCK_SPREAD_DATA } from '../mockData';
 
 export default function SpreadExplorer() {
   const [useCarryAdj, setUseCarryAdj] = useState(false);
-  const { data: spreadData, isLoading } = useSpread('GOLDM/GOLDPETAL', '2026-01-01', '2026-12-31');
 
   return (
     <div className="space-y-6">
@@ -45,7 +44,7 @@ export default function SpreadExplorer() {
           <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-4">Normalized Price (INR/g)</h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={spreadData || []} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <LineChart data={MOCK_SPREAD_DATA} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#30363D" vertical={false} />
                 <XAxis dataKey="date" stroke="#8B949E" fontSize={12} tickMargin={10} minTickGap={30} />
                 <YAxis stroke="#8B949E" fontSize={12} domain={['auto', 'auto']} tickFormatter={(val) => `₹${val}`} width={60} />
@@ -55,11 +54,11 @@ export default function SpreadExplorer() {
                 />
                 
                 {/* Highlight regions */}
-                {(spreadData || []).map((d: any, i: number) => (
-                  d.is_thin && <ReferenceArea key={`thin-${i}`} x1={d.date} x2={spreadData[i+1]?.date || d.date} fill="#F85149" fillOpacity={0.1} />
+                {MOCK_SPREAD_DATA.map((d, i) => (
+                  d.is_thin && <ReferenceArea key={`thin-${i}`} x1={d.date} x2={MOCK_SPREAD_DATA[i+1]?.date || d.date} fill="#F85149" fillOpacity={0.1} />
                 ))}
-                {(spreadData || []).map((d: any, i: number) => (
-                  d.is_tender && <ReferenceArea key={`tender-${i}`} x1={d.date} x2={spreadData[i+1]?.date || d.date} fill="#D29922" fillOpacity={0.1} />
+                {MOCK_SPREAD_DATA.map((d, i) => (
+                  d.is_tender && <ReferenceArea key={`tender-${i}`} x1={d.date} x2={MOCK_SPREAD_DATA[i+1]?.date || d.date} fill="#D29922" fillOpacity={0.1} />
                 ))}
 
                 <Line type="monotone" dataKey="px_a" name="GOLDM" stroke="#D4AF37" strokeWidth={2} dot={false} />
@@ -82,7 +81,7 @@ export default function SpreadExplorer() {
           </h4>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={spreadData || []} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <LineChart data={MOCK_SPREAD_DATA} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#30363D" vertical={false} />
                 <XAxis dataKey="date" hide />
                 <YAxis stroke="#8B949E" fontSize={12} width={60} />
@@ -100,7 +99,7 @@ export default function SpreadExplorer() {
           <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-4">Z-Score</h4>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={spreadData || []} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <LineChart data={MOCK_SPREAD_DATA} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#30363D" vertical={false} />
                 <XAxis dataKey="date" stroke="#8B949E" fontSize={12} tickMargin={10} minTickGap={30} />
                 <YAxis stroke="#8B949E" fontSize={12} domain={[-5, 5]} ticks={[-4, -2, 0, 2, 4]} width={60} />
