@@ -19,29 +19,53 @@ def get_contracts(db: duckdb.DuckDBPyConnection = Depends(get_duckdb)):
         return {"data": {}, "error": {"code": "DB_ERROR", "message": str(e)}}
 
 @router.get("/prices")
-def get_prices(symbol: str, expiry: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None):
-    # Mock data for frontend
+def get_prices(symbol: str, expiry: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None, db: duckdb.DuckDBPyConnection = Depends(get_duckdb)):
+    query = "SELECT trade_date as date, close as price, expiry_date as expiry FROM bhav_raw WHERE symbol = ?"
+    params = [symbol]
+    
+    if expiry:
+        query += " AND expiry_date = ?"
+        params.append(expiry)
+    if from_date:
+        query += " AND trade_date >= ?"
+        params.append(from_date)
+    if to_date:
+        query += " AND trade_date <= ?"
+        params.append(to_date)
+        
+    query += " ORDER BY trade_date ASC"
+    
+    res = db.execute(query, params).fetchall()
+    columns = [desc[0] for desc in db.description]
+    prices = [dict(zip(columns, row)) for row in res]
+    
+    # In a real app we might normalize to 999 purity here by joining with contract_meta
+    
     return {
         "data": {
             "symbol": symbol,
-            "prices": [
-                {"date": "2026-10-01", "normalized_price": 6005, "expiry": "04DEC2026"}
-            ]
+            "prices": prices
         },
-        "meta": {"snapshot_hash": "mock-hash"}
+        "meta": {"generated_at": date.today().isoformat()}
     }
 
 @router.get("/curve")
-def get_curve(symbol: str, as_of: str):
-    # Mock data for term structure
+def get_curve(symbol: str, as_of: str, db: duckdb.DuckDBPyConnection = Depends(get_duckdb)):
+    query = """
+        SELECT expiry_date as expiry, close as price 
+        FROM bhav_raw 
+        WHERE symbol = ? AND trade_date = ?
+        ORDER BY expiry_date ASC
+    """
+    res = db.execute(query, (symbol, as_of)).fetchall()
+    columns = [desc[0] for desc in db.description]
+    curve = [dict(zip(columns, row)) for row in res]
+    
     return {
         "data": {
             "symbol": symbol,
             "as_of": as_of,
-            "curve": [
-                {"expiry": "04DEC2026", "price": 6005},
-                {"expiry": "05FEB2027", "price": 6050}
-            ]
+            "curve": curve
         },
-        "meta": {"snapshot_hash": "mock-hash"}
+        "meta": {"generated_at": date.today().isoformat()}
     }

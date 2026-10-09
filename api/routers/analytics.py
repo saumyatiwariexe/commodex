@@ -1,36 +1,65 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from typing import Optional
+from datetime import date
+import duckdb
+from ..deps import get_duckdb
 
 router = APIRouter(tags=["Analytics"])
 
 @router.get("/pairs")
-def get_pairs():
+def get_pairs(db: duckdb.DuckDBPyConnection = Depends(get_duckdb)):
+    # Since pair_spread isn't populated yet, we'll try to query it but return empty if no data
+    query = "SELECT DISTINCT leg_a as symbol_a, leg_b as symbol_b, expiry_a, expiry_b, expiry_gap_days as gap_days FROM pair_spread"
+    res = db.execute(query).fetchall()
+    columns = [desc[0] for desc in db.description]
+    pairs = [dict(zip(columns, row)) for row in res]
+    
     return {
-        "data": [
-            {"symbol_a": "GOLDM", "symbol_b": "GOLDPETAL", "expiry_a": "04DEC2026", "expiry_b": "31DEC2026", "gap_days": 27}
-        ],
-        "meta": {"snapshot_hash": "mock-hash"}
+        "data": pairs,
+        "meta": {"generated_at": date.today().isoformat()}
     }
 
 @router.get("/spread")
-def get_spread(pair: str, from_date: Optional[str] = None, to_date: Optional[str] = None):
-    # Mock data for spread explorer
+def get_spread(pair: str, from_date: Optional[str] = None, to_date: Optional[str] = None, db: duckdb.DuckDBPyConnection = Depends(get_duckdb)):
+    try:
+        symbol_a, symbol_b = pair.split("-")
+    except ValueError:
+        return {"data": {}, "error": {"code": "INVALID_PAIR", "message": "Pair must be separated by '-' e.g. GOLDM-GOLDTEN"}}
+
+    query = "SELECT trade_date as date, raw_spread, carry_adj_spread FROM pair_spread WHERE leg_a = ? AND leg_b = ?"
+    params = [symbol_a, symbol_b]
+    
+    if from_date:
+        query += " AND trade_date >= ?"
+        params.append(from_date)
+    if to_date:
+        query += " AND trade_date <= ?"
+        params.append(to_date)
+        
+    query += " ORDER BY trade_date ASC"
+    
+    res = db.execute(query, params).fetchall()
+    columns = [desc[0] for desc in db.description]
+    timeseries = [dict(zip(columns, row)) for row in res]
+    
+    # We don't have z_score in table, we might compute it on fly or let model populate it
+    
     return {
         "data": {
             "pair": pair,
-            "timeseries": [
-                {"date": "2026-10-01", "raw_spread": 15.5, "carry_adj_spread": 12.0, "z_score": 1.5}
-            ]
+            "timeseries": timeseries
         },
-        "meta": {"snapshot_hash": "mock-hash"}
+        "meta": {"generated_at": date.today().isoformat()}
     }
 
 @router.get("/signals")
-def get_signals(as_of: str):
+def get_signals(as_of: str, db: duckdb.DuckDBPyConnection = Depends(get_duckdb)):
+    # Mocking signals slightly still since signals aren't stored in a specific signal table in schema.
+    # Architecture says they run on demand or from backtest.
     return {
         "data": {
             "signals": [],
-            "reason": "no_signal"
+            "reason": "no_signals_generated_for_date"
         },
-        "meta": {"snapshot_hash": "mock-hash"}
+        "meta": {"generated_at": date.today().isoformat()}
     }
