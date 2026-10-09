@@ -50,7 +50,7 @@
 
 ## 4. Repository layout
 ```
-goldspread/
+commodex/
 ├── data/            raw/ (parquet, immutable), processed/, samples/
 ├── ingestion/       adapters, parsers, validators
 ├── model/           normalize.py, pairing.py, signals.py, carry.py, costs.py, backtest.py, attribution.py

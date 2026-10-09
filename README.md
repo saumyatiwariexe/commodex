@@ -1,4 +1,4 @@
-# GoldSpread Intelligence
+# Commodex
 
 Hack in Hills '26, Track 03: Commodity Derivatives Intelligence.
 
