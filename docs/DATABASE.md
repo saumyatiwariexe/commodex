@@ -117,7 +117,7 @@ CREATE TABLE alert_log (
 
 ## 4. Integrity rules
 - `bhav_raw` is insert-only. Enforce with a view-only role in the app layer and a test that attempts an update.
-- Every run row stores `snapshot_hash`, `config_hash`, `code_version`, so results are reproducible.
+- Every run row stores `snapshot_hash`, `config_hash`, `code_version`, so results are reproducible. Hash format (`sha256:v1:<hex>`) and canonicalization rules: MODEL.md section 12.
 - Indexes: `(trade_date)`, `(symbol, expiry_date, trade_date)`, `(run_id)`. DuckDB handles the volumes here without tuning.
 
 ## 5. Volume estimate

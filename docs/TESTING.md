@@ -58,7 +58,20 @@ See AUTH.md section 6.
 ## 10. CI
 On every push: ruff, mypy, pytest with coverage threshold on `model/` (target 90%), frontend type-check and build, Playwright against the built demo mode.
 
-## 11. Definition of done for the demo
+## 11. Hashing and reproducibility tests
+Spec: MODEL.md section 12.
+1. **Key-order invariance:** the same config built with keys inserted in different orders (including nested dicts) gives the same `config_hash`.
+2. **Known-answer vector:** a fixed config must hash to a fixed hex string stored in the test. If this fails, canonicalization changed and the version must be bumped.
+3. **Float and null rules:** `-0.0` and `0.0` hash the same. NaN and infinity raise an error. A missing key and an explicit null hash differently.
+4. **Process independence:** compute the hash in two separate processes with different `PYTHONHASHSEED` values. Results must match.
+5. **Snapshot ordering:** shuffling manifest entries does not change `snapshot_hash`.
+6. **Snapshot tamper detection:** changing one byte in a partition file changes `snapshot_hash`, and verification reports which file failed.
+7. **No rewrite on re-ingest:** re-fetching an existing date leaves file bytes and `snapshot_hash` unchanged.
+8. **Run reproducibility:** two runs with identical snapshot, config and code produce identical metrics and an identical trade table.
+9. **Dirty code flag:** a run from a dirty working tree gets a `-dirty` suffix and is flagged non-reproducible.
+10. **Single entry point:** a lint or grep test fails if `hashlib` or `json.dumps` is used for run hashing outside `model/canonical.py`.
+
+## 12. Definition of done for the demo
 - Look-ahead tests pass and are shown live.
 - Synthetic no-edge and known-edge tests pass.
 - A judge-selected trade can be traced from raw rows to costs to net PnL.

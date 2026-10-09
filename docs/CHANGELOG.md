@@ -2,6 +2,23 @@
 
 Newest first. Every change to the idea, scope, or docs gets an entry (see AGENTS.md section 4).
 
+## 2026-10-09: v0.4 Hashing pinned
+**Changed**
+- `MODEL.md`: new section 12 (hashing and reproducibility). Defines what `snapshot_hash`, `config_hash` and `code_version` are, the canonical serialization rules (sorted keys, no whitespace, float and null handling, ISO dates, reject NaN and infinity), the `sha256:v1:` format, the snapshot-hash procedure, and what the hashes do not prove.
+- `AUTH.md`: new section 2.1 pinning argon2id parameters (64 MiB, 3 iterations, 4 lanes, 16-byte salt, 32-byte hash) with rehash-on-login. JWT secret must be at least 32 random bytes. Added hash-format checks to the auth test list.
+- `TESTING.md`: new section 11 with ten hashing and reproducibility tests. Definition of done is now section 12.
+- `DATA_PIPELINE.md`: snapshot hash now points to MODEL.md section 12.4 and states that partition files are hashed once and never rewritten.
+- `DATABASE.md`: points to the hash format and canonicalization rules.
+- `AGENTS.md`: code conventions now require hashing through `model/canonical.py` and argon2id for passwords.
+
+**Why:** the canonical-JSON rule existed only in `WEB3.md`, which was deleted in v0.2. That left `config_hash` and the snapshot hash with no serialization spec, so identical inputs could hash differently and the reproducibility claim would not hold. Argon2id parameters were left to library defaults.
+
+**Decision:** snapshot hash covers file bytes taken at first write, not logical content, because Parquet writes are not guaranteed byte-identical. The trade-off is that re-writing a partition changes the hash, so partitions are immutable by rule.
+
+**Unverified:** the OWASP minimum argon2id numbers are quoted from memory. Check the current OWASP Password Storage Cheat Sheet. The pinned values follow RFC 9106's lower-memory recommendation and should be confirmed against it too.
+
+**Not changed:** PRD, FRONTEND, BACKEND, ARCHITECTURE, DEPLOYMENT, DEMO_PLAN. The `HashBadge` component only displays the stored string.
+
 ## 2026-10-09: v0.3 Agent rules and skills
 **Changed**
 - Added `AGENTS.md`: session checklist, non-negotiables, iteration protocol with impact map, skill selection map and precedence rules, verification and honesty rules, code and security conventions, scope control, collaboration style.
