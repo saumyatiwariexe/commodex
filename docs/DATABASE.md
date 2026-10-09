@@ -1,0 +1,124 @@
+# Database
+
+> **Skills:** `data:sql-queries`, `data:write-query` (DuckDB and SQLite SQL), `anthropic-skills:database-optimizer` (written for PostgreSQL/MySQL; apply only the ideas that transfer to DuckDB and SQLite).
+
+## 1. Choice and reasoning
+- **Parquet + DuckDB** for market data and backtest results. [Likely] This is the fastest setup for columnar, read-heavy daily data, with no server to run.
+- **SQLite** for application state (users, subscriptions, alert log). Small, zero-config, enough for a hackathon.
+- Postgres is not needed. Add it only if multi-user writes become real.
+
+## 2. Analytics schema (DuckDB)
+
+```sql
+-- Static contract metadata
+CREATE TABLE contract_meta (
+  symbol            VARCHAR PRIMARY KEY,
+  lot_grams         DOUBLE NOT NULL,
+  quote_grams       DOUBLE NOT NULL,
+  purity            INTEGER NOT NULL,        -- 995 or 999
+  expiry_window     VARCHAR NOT NULL
+);
+
+-- Raw daily settlement data, one row per (symbol, expiry, date). Immutable.
+CREATE TABLE bhav_raw (
+  trade_date     DATE    NOT NULL,
+  symbol         VARCHAR NOT NULL,
+  expiry_date    DATE    NOT NULL,
+  open           DOUBLE, high DOUBLE, low DOUBLE, close DOUBLE,
+  volume         BIGINT,
+  open_interest  BIGINT,
+  source         VARCHAR NOT NULL,           -- 'mcx_live' | 'local_file'
+  ingested_at    TIMESTAMP NOT NULL,
+  PRIMARY KEY (trade_date, symbol, expiry_date)
+);
+
+-- Normalized price per gram at 999 purity
+CREATE TABLE bhav_norm (
+  trade_date     DATE, symbol VARCHAR, expiry_date DATE,
+  px_per_gram_999 DOUBLE NOT NULL,
+  days_to_expiry INTEGER NOT NULL,
+  liquidity_bucket VARCHAR,                  -- 'thin' | 'ok' | 'deep'
+  PRIMARY KEY (trade_date, symbol, expiry_date)
+);
+
+-- Pairs matched by nearest expiry
+CREATE TABLE pair_spread (
+  trade_date DATE, leg_a VARCHAR, expiry_a DATE, leg_b VARCHAR, expiry_b DATE,
+  expiry_gap_days INTEGER,
+  raw_spread DOUBLE,                         -- px_a - px_b per gram
+  carry_adj_spread DOUBLE,                   -- after expiry-gap carry adjustment
+  PRIMARY KEY (trade_date, leg_a, expiry_a, leg_b, expiry_b)
+);
+
+-- Backtest runs
+CREATE TABLE bt_run (
+  run_id          VARCHAR PRIMARY KEY,
+  created_at      TIMESTAMP,
+  snapshot_hash   VARCHAR NOT NULL,
+  config_hash     VARCHAR NOT NULL,
+  code_version    VARCHAR NOT NULL,
+  config_json     JSON,
+  period_start    DATE, period_end DATE,
+  holdout_start   DATE,
+  gross_pnl DOUBLE, total_cost DOUBLE, net_pnl DOUBLE,
+  max_drawdown DOUBLE, sharpe DOUBLE,
+  beta_gold DOUBLE, alpha_annual DOUBLE, r2_gold DOUBLE,
+  n_trades INTEGER, alert_days INTEGER, total_days INTEGER
+);
+
+CREATE TABLE bt_trade (
+  run_id VARCHAR, trade_id INTEGER,
+  leg_a VARCHAR, expiry_a DATE, leg_b VARCHAR, expiry_b DATE,
+  entry_date DATE, exit_date DATE, exit_reason VARCHAR,   -- 'target' | 'stop' | 'time' | 'calendar'
+  qty_a INTEGER, qty_b INTEGER,
+  entry_px_a DOUBLE, entry_px_b DOUBLE, exit_px_a DOUBLE, exit_px_b DOUBLE,
+  gross_pnl DOUBLE, cost DOUBLE, net_pnl DOUBLE,
+  PRIMARY KEY (run_id, trade_id)
+);
+
+CREATE TABLE bt_daily (
+  run_id VARCHAR, trade_date DATE,
+  strategy_ret DOUBLE, gold_ret DOUBLE, position_notional DOUBLE,
+  PRIMARY KEY (run_id, trade_date)
+);
+
+-- Contract calendar
+CREATE TABLE contract_calendar (
+  symbol VARCHAR, expiry_date DATE,
+  listing_date DATE, first_liquid_date DATE, tender_start DATE, last_trade_date DATE,
+  PRIMARY KEY (symbol, expiry_date)
+);
+```
+
+## 3. Application state (SQLite)
+
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,               -- argon2id, never returned by the API
+  role TEXT NOT NULL DEFAULT 'viewer',       -- 'viewer' | 'analyst' | 'admin'
+  created_at TEXT NOT NULL
+);
+CREATE TABLE login_attempts (
+  username TEXT, ip TEXT, attempted_at TEXT NOT NULL, success INTEGER NOT NULL
+);
+CREATE TABLE role_audit (
+  id INTEGER PRIMARY KEY, user_id INTEGER, changed_by INTEGER,
+  old_role TEXT, new_role TEXT, changed_at TEXT NOT NULL
+);
+CREATE TABLE alert_subscription (
+  user_id INTEGER, pair TEXT, z_threshold REAL, min_liquidity TEXT
+);
+CREATE TABLE alert_log (
+  id INTEGER PRIMARY KEY, as_of DATE, pair TEXT, z REAL, reason TEXT, created_at TEXT
+);
+```
+
+## 4. Integrity rules
+- `bhav_raw` is insert-only. Enforce with a view-only role in the app layer and a test that attempts an update.
+- Every run row stores `snapshot_hash`, `config_hash`, `code_version`, so results are reproducible.
+- Indexes: `(trade_date)`, `(symbol, expiry_date, trade_date)`, `(run_id)`. DuckDB handles the volumes here without tuning.
+
+## 5. Volume estimate
+[Guessing] Four symbols, up to about 12 live expiries each, a few years of daily data gives well under a few million rows. This fits comfortably in memory.
