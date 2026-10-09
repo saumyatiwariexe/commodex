@@ -1,0 +1,34 @@
+﻿# costs.yaml
+# All values are PLACEHOLDERS. Fill from the current official MCX and broker
+# schedules before the demo (AGENTS.md §10, MODEL.md §6).
+# Do not hard-code rates in Python. Load this file via the cost model.
+
+# Brokerage — fill from your broker's tariff card
+brokerage:
+  per_order_inr: null          # or use per_lot_inr below
+  per_lot_inr: null            # some brokers charge per lot; pick whichever applies
+
+# Exchange transaction charge (ETC) — from MCX circulars
+exchange_transaction_charge_bps: null   # basis points of turnover
+
+# Commodity Transaction Tax (CTT) — from Finance Act
+ctt_bps: null                  # basis points; applies to the sell side only
+
+# GST on brokerage + ETC
+gst_pct: 18.0                  # 18% [Certain] as of 2026
+
+# Stamp duty — state-dependent; fill per MCX schedule
+stamp_duty_bps: null
+
+# Slippage haircut by liquidity bucket
+# settlement price ≠ fill price; adverse-direction adjustment
+slippage:
+  liquid:
+    base_bps: null
+    impact_k: null      # k in: slip_bps = base_bps + k * (order_grams / avg_daily_vol_grams)
+  normal:
+    base_bps: null
+    impact_k: null
+  thin:
+    base_bps: null
+    impact_k: null
