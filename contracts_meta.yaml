@@ -1,4 +1,4 @@
-﻿# contracts_meta.yaml
+# contracts_meta.yaml
 # Verify ALL values against https://www.mcxindia.com/products/bullion/gold
 # before the demo. These are [Likely] correct per the MCX spec page (Oct 2026).
 # See MODEL.md §1 and AGENTS.md non-negotiable §10.
@@ -8,17 +8,14 @@ contracts:
     trading_unit_grams: 100
     quote_grams: 10
     purity: 995
-
   - symbol: GOLDTEN
     trading_unit_grams: 10
     quote_grams: 10
     purity: 999
-
   - symbol: GOLDGUINEA
     trading_unit_grams: 8
     quote_grams: 8
     purity: 999
-
   - symbol: GOLDPETAL
     trading_unit_grams: 1
     quote_grams: 1

@@ -12,3 +12,24 @@ def test_version():
     response = client.get("/version")
     assert response.status_code == 200
     assert "version" in response.json()
+
+
+def test_readyz():
+    response = client.get("/readyz")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready"}
+
+
+def test_get_contracts():
+    response = client.get("/api/v1/contracts")
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert "meta" in data
+
+
+def test_get_signals():
+    response = client.get("/api/v1/signals?as_of=2026-10-09")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["reason"] == "no_signal"
